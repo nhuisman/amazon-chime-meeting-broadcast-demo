@@ -14,6 +14,6 @@ run:
 	docker run --rm --env-file $(ENV_FILE) --name $(CONTAINER_NAME) $(IMAGE_LABEL) 2>&1 | tee $(CONTAINER_NAME).log
 
 run_with_mount:
-	docker run --rm --env-file $(ENV_FILE) -v ${VOLUME}:/express  --name $(CONTAINER_NAME) -it $(IMAGE_LABEL) 2>&1 | tee $(CONTAINER_NAME).log
+	docker run --rm --env-file $(ENV_FILE) -p 5000:5000 -v ${VOLUME}:/express  --name $(CONTAINER_NAME) -it $(IMAGE_LABEL) 2>&1 | tee $(CONTAINER_NAME).log
 
 .PHONY: all image run

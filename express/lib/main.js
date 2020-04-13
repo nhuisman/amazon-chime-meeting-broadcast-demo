@@ -3,6 +3,7 @@ const marshaller = require("@aws-sdk/eventstream-marshaller"); // for converting
 const util_utf8_node = require("@aws-sdk/util-utf8-node"); // utilities for encoding and decoding UTF8
 const mic = require('microphone-stream'); // collect microphone input as a stream of raw bytes
 
+
 // our converter between binary event streams messages and JSON
 const eventStreamMarshaller = new marshaller.EventStreamMarshaller(util_utf8_node.toUtf8, util_utf8_node.fromUtf8);
 
@@ -37,10 +38,10 @@ $('#start-button').click(function () {
 
     // first we get the microphone input from the browser (as a promise)...
     window.navigator.mediaDevices.getUserMedia({
-            video: false,
-            audio: true
-        })
-        // ...then we convert the mic stream to binary event stream messages when the promise resolves 
+        video: false,
+        audio: true
+    })
+    // ...then we convert the mic stream to binary event stream messages when the promise resolves
         .then(streamAudioToWebSocket)
         .catch(function (error) {
             showError('There was an error streaming your audio to Amazon Transcribe. Please try again.');
@@ -48,6 +49,7 @@ $('#start-button').click(function () {
             toggleStartStop();
         });
 });
+
 
 let streamAudioToWebSocket = function (userMediaStream) {
     //let's get the mic input from the browser, via the microphone-stream module

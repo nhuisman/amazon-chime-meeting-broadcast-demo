@@ -1,3 +1,4 @@
 .*.sw*
 /container.env
+/express/node_modules
 /bcast.log

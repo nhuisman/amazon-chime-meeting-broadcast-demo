@@ -8,7 +8,8 @@
     "url": "http://aws.amazon.com/"
   },
   "scripts": {
-    "build": "browserify lib/main.js -o public/main.js -d"
+    "build": "FLUENTFFMPEG_COV=0 browserify lib/main.js -o public/main.js -d",
+    "start": "FLUENTFFMPEG_COV=0 node server.js"
   },
   "keywords": [],
   "browserify": {
@@ -29,6 +30,7 @@
     "browserify": "^16.5.1",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
+    "fluent-ffmpeg": "2.1.2",
     "http-proxy-middleware": "^0.19.1",
     "local-web-server": "^3.0.7",
     "microphone-stream": "^5.0.1",

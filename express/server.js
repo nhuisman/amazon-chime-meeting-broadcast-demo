@@ -5,6 +5,7 @@ if (process.env.NODE_ENV !== 'production') {
 const ACCESS_ID = process.env.ACCESS_ID;
 const SECRET_KEY = process.env.SECRET_KEY;
 
+console.log(`FLUENTFFMPEG_COV: (${process.env.FLUENTFFMPEG_COV})`);
 const crypto = require('crypto');
 const express = require('express');
 const proxy = require('http-proxy-middleware');

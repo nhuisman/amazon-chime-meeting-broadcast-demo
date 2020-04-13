@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const express = require('express');
 const proxy = require('http-proxy-middleware');
 const v4 = require('./lib/aws-signature-v4'); // to generate our pre-signed URL
+const ffstream = require('./lib/streamCapture');
 
 let region = 'us-east-1';
 let languageCode = 'en-US';
@@ -55,6 +56,9 @@ app.get('/', function (request, response) {
 });
 
 app.get('/stop', function (request, response) {});
+app.get('/record', function (request, response) {
+    response.sendStatus(200);
+});
 
 app.get('/region/:region', function (request, response) {
     region = request.params.region;

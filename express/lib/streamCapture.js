@@ -1,6 +1,6 @@
 const ffmpegStreamer = require('fluent-ffmpeg');
 
-export function ffmpeg_stream() {
+exports.ffmpeg_stream = function() {
     let command = ffmpegStreamer()
         .addInput(':2.0+0,150')
         .withSize('720x480')

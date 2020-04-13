@@ -30,7 +30,7 @@ RUN chmod +x /firefox_capture.sh
 COPY run.sh /
 RUN chmod +x /run.sh
 
-RUN /usr/bin/apt-get install -y vim
+RUN /usr/bin/apt-get install -y vim git
 
 #ENTRYPOINT ["/run.sh"]
 ENTRYPOINT ["/bin/bash"]

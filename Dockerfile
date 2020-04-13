@@ -25,8 +25,10 @@ COPY /recording/ /recording
 RUN chmod +x /recording/record.js
 
 # ENTRY SCRIPT
+COPY firefox_capture.sh /
+RUN chmod +x /firefox_capture.sh
 COPY run.sh /
 RUN chmod +x /run.sh
 
-
 ENTRYPOINT ["/run.sh"]
+#ENTRYPOINT ["/bin/bash"]

@@ -1,27 +1,3 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
-
-const { spawn } = require('child_process');
-const { S3Uploader } = require('./utils/upload');
-
-const MEETING_URL = process.env.MEETING_URL || 'Not present in environment';
-console.log(`[recording process] MEETING_URL: ${MEETING_URL}`);
-
-const args = process.argv.slice(2);
-const BUCKET_NAME = args[0];
-console.log(`[recording process] BUCKET_NAME: ${BUCKET_NAME}`);
-const BROWSER_SCREEN_WIDTH = args[1];
-const BROWSER_SCREEN_HEIGHT = args[2];
-console.log(`[recording process] BROWSER_SCREEN_WIDTH: ${BROWSER_SCREEN_WIDTH}, BROWSER_SCREEN_HEIGHT: ${BROWSER_SCREEN_HEIGHT}`);
-
-const VIDEO_BITRATE = 3000;
-const VIDEO_FRAMERATE = 30;
-const VIDEO_GOP = VIDEO_FRAMERATE * 2;
-const AUDIO_BITRATE = '160k';
-const AUDIO_SAMPLERATE = 44100;
-const AUDIO_CHANNELS = 2
-const DISPLAY = process.env.DISPLAY;
-
 const audioUtils = require('./audioUtils'); // for encoding audio data as PCM
 const marshaller = require("@aws-sdk/eventstream-marshaller"); // for converting binary event stream messages to and from JSON
 const util_utf8_node = require("@aws-sdk/util-utf8-node"); // utilities for encoding and decoding UTF8
@@ -40,111 +16,38 @@ let micStream;
 let socketError = false;
 let transcribeException = false;
 
-let ffmpeg = require('fluent-ffmpeg');
+$(document).ready(function () {
+    // check to see if the browser allows mic access
+    if (!window.navigator.mediaDevices.getUserMedia) {
+        // Use our helper method to show an error on the page
+        showError('We support the latest versions of Chrome, Firefox, Safari, and Edge. Update your browser and try your request again.');
 
-var command = ffmpeg()
-.addInput(':2.0+0,150')
-.withSize('720x480')
-.withFpsInput(30)
-.withFpsOutput(30)
-.addInputOptions('-y', '-f' , 'x11grab')
-.format('mp4')
-.outputOptions('-movflags frag_keyframe+empty_moov')
-.on('end', function() {
-   console.log('file has been converted succesfully');
-})
-.on('error', function(err) {
-    console.log('an error happened: ' + err.message);
+        // maintain enabled/distabled state for the start and stop buttons
+        toggleStartStop();
+    }
 });
 
-var ffstream = command.pipe();
+$('#start-button').click(function () {
+    $('#error').hide(); // hide any existing errors
+    toggleStartStop(true); // disable start and enable stop button
 
-ffstream.on('data', function(chunk) {
-  console.log('ffmpeg just wrote ' + chunk.length + ' bytes');
+    // set the language and region from the dropdowns
+    setLanguage();
+    setRegion();
+
+    // first we get the microphone input from the browser (as a promise)...
+    window.navigator.mediaDevices.getUserMedia({
+            video: false,
+            audio: true
+        })
+        // ...then we convert the mic stream to binary event stream messages when the promise resolves 
+        .then(streamAudioToWebSocket)
+        .catch(function (error) {
+            showError('There was an error streaming your audio to Amazon Transcribe. Please try again.');
+            console.error(error);
+            toggleStartStop();
+        });
 });
-
-
-
-const transcodeStreamToOutput = spawn('ffmpeg',[
-    '-hide_banner',
-    '-loglevel', 'error',
-    // disable interaction via stdin
-    '-nostdin',
-    // screen image size
-    '-s', `${BROWSER_SCREEN_WIDTH}x${BROWSER_SCREEN_HEIGHT}`,
-    // video frame rate
-    '-r', `${VIDEO_FRAMERATE}`,
-    // hides the mouse cursor from the resulting video
-    '-draw_mouse', '0',
-    // grab the x11 display as video input
-    '-f', 'x11grab',
-        '-i', `${DISPLAY}`,
-    // grab pulse as audio input
-    '-f', 'pulse', 
-        '-ac', '2',
-        '-i', 'default',
-    // codec video with libx264
-    '-c:v', 'libx264',
-        '-pix_fmt', 'yuv420p',
-        '-profile:v', 'main',
-        '-preset', 'veryfast',
-        '-x264opts', 'nal-hrd=cbr:no-scenecut',
-        '-minrate', `${VIDEO_BITRATE}`,
-        '-maxrate', `${VIDEO_BITRATE}`,
-        '-g', `${VIDEO_GOP}`,
-    // apply a fixed delay to the audio stream in order to synchronize it with the video stream
-    '-filter_complex', 'adelay=delays=1000|1000',
-    // codec audio with aac
-    '-c:a', 'aac',
-        '-b:a', `${AUDIO_BITRATE}`,
-        '-ac', `${AUDIO_CHANNELS}`,
-        '-ar', `${AUDIO_SAMPLERATE}`,
-    // adjust fragmentation to prevent seeking(resolve issue: muxer does not support non seekable output)
-    '-movflags', 'frag_keyframe+empty_moov',
-    // set output format to mp4 and output file to stdout
-    '-f', 'mp4', '-'
-    ]
-);
-
-transcodeStreamToOutput.stderr.on('data', data => {
-    console.log(`[transcodeStreamToOutput process] stderr: ${(new Date()).toISOString()} ffmpeg: ${data}`);
-});
-
-console.log(`[pid]: ${transcodeStreamToOutput.pid}`)
-
-const timestamp = new Date();
-const fileTimestamp = timestamp.toISOString().substring(0,19);
-const year = timestamp.getFullYear();
-const month = timestamp.getMonth() + 1;
-const day = timestamp.getDate();
-const hour = timestamp.getUTCHours();
-const fileName = `${year}/${month}/${day}/${hour}/${fileTimestamp}.mp4`;
-const uploader = new S3Uploader(BUCKET_NAME, fileName)
-uploader.uploadStream(transcodeStreamToOutput.stdout);
-
-// event handler for docker stop, not exit until upload completes
-process.on('SIGTERM', (code, signal) => {
-    console.log(`[recording process] exited with code ${code} and signal ${signal}(SIGTERM)`);
-    process.kill(transcodeStreamToOutput.pid, 'SIGTERM');
-});
-
-// debug use - event handler for ctrl + c
-process.on('SIGINT', (code, signal) => {
-    console.log(`[recording process] exited with code ${code} and signal ${signal}(SIGINT)`)
-    process.kill('SIGTERM');
-});
-
-process.on('exit', function(code) {
-    console.log('[recording process] exit code', code);
-});
-
-
-
-
-
-
-/////  NEW STUFF
-
 
 let streamAudioToWebSocket = function (userMediaStream) {
     //let's get the mic input from the browser, via the microphone-stream module
@@ -172,6 +75,24 @@ let streamAudioToWebSocket = function (userMediaStream) {
 
     // handle messages, errors, and close events
     wireSocketEvents();
+}
+
+function setLanguage() {
+    languageCode = $('#language').find(':selected').val();
+    if (languageCode == "en-US" || languageCode == "es-US")
+        sampleRate = 44100;
+    else
+        sampleRate = 8000;
+
+    //send the value to the server
+    $.get("/language/" + languageCode);
+}
+
+function setRegion() {
+    region = $('#region').find(':selected').val();
+
+    //send the value to the server
+    $.get("/region/" + region);
 }
 
 function wireSocketEvents() {
@@ -241,4 +162,60 @@ let closeSocket = function () {
         let emptyBuffer = eventStreamMarshaller.marshall(emptyMessage);
         socket.send(emptyBuffer);
     }
+}
+
+$('#stop-button').click(function () {
+    closeSocket();
+    toggleStartStop();
+});
+
+$('#reset-button').click(function () {
+    $('#transcript').val('');
+    transcription = '';
+});
+
+function toggleStartStop(disableStart = false) {
+    $('#start-button').prop('disabled', disableStart);
+    $('#stop-button').attr("disabled", !disableStart);
+}
+
+function showError(message) {
+    $('#error').html('<i class="fa fa-times-circle"></i> ' + message);
+    $('#error').show();
+}
+
+function convertAudioToBinaryMessage(audioChunk) {
+    let raw = mic.toRaw(audioChunk);
+
+    if (raw == null)
+        return;
+
+    // downsample and convert the raw audio bytes to PCM
+    let downsampledBuffer = audioUtils.downsampleBuffer(raw, sampleRate);
+    let pcmEncodedBuffer = audioUtils.pcmEncode(downsampledBuffer);
+
+    // add the right JSON headers and structure to the message
+    let audioEventMessage = getAudioEventMessage(Buffer.from(pcmEncodedBuffer));
+
+    //convert the JSON object + headers into a binary event stream message
+    let binary = eventStreamMarshaller.marshall(audioEventMessage);
+
+    return binary;
+}
+
+function getAudioEventMessage(buffer) {
+    // wrap the audio data in a JSON envelope
+    return {
+        headers: {
+            ':message-type': {
+                type: 'string',
+                value: 'event'
+            },
+            ':event-type': {
+                type: 'string',
+                value: 'AudioEvent'
+            }
+        },
+        body: buffer
+    };
 }

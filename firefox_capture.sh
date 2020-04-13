@@ -1,18 +1,13 @@
 #!/bin/bash
 
-# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
-
 set -xeo pipefail
 
-BROWSER_URL="${MEETING_URL}&record=true"
-SCREEN_WIDTH=${RECORDING_SCREEN_WIDTH:-'1280'}
-SCREEN_HEIGHT=${RECORDING_SCREEN_HEIGHT:-'720'}
+BROWSER_URL=https://app.chime.aws/portal/${MEETING_PIN}
+SCREEN_WIDTH=1920
+SCREEN_HEIGHT=1080
 SCREEN_RESOLUTION=${SCREEN_WIDTH}x${SCREEN_HEIGHT}
 COLOR_DEPTH=24
-X_SERVER_NUM=1
-S3_BUCKET_NAME=${RECORDING_ARTIFACTS_BUCKET}
-
+X_SERVER_NUM=2
 VIDEO_BITRATE=3000
 VIDEO_FRAMERATE=30
 VIDEO_GOP=$((VIDEO_FRAMERATE * 2))
@@ -25,6 +20,8 @@ pulseaudio -D --exit-idle-time=-1
 pacmd load-module module-virtual-sink sink_name=v1  # Load a virtual sink as `v1`
 pacmd set-default-sink v1  # Set the `v1` as the default sink device
 pacmd set-default-source v1.monitor  # Set the monitor of the v1 sink to be the default source
+pactl list  sinks
+pactl list sink-inputs
 
 # Start X11 virtual framebuffer so Firefox will have somewhere to draw
 Xvfb :${X_SERVER_NUM} -ac -screen 0 ${SCREEN_RESOLUTION}x${COLOR_DEPTH} > /dev/null 2>&1 &
@@ -46,7 +43,7 @@ popd >& /dev/null
 # interaction and the use of the OpenH264 plugin.
 cat <<EOF >> /tmp/foo4/prefs.js
 user_pref("media.autoplay.default", 0);
-user_pref("media.autoplay.enabled.user-gestures-needed", false); 
+user_pref("media.autoplay.enabled.user-gestures-needed", false);
 user_pref("media.navigator.permission.disabled", true);
 user_pref("media.gmp-gmpopenh264.abi", "x86_64-gcc3");
 user_pref("media.gmp-gmpopenh264.lastUpdate", 1571534329);
@@ -58,7 +55,6 @@ EOF
 # NB: The `--width` and `--height` arguments have to be very early in the
 # argument list or else only a white screen will result in the capture for some
 # reason.
-
 firefox \
   -P foo4 \
   --width ${SCREEN_WIDTH} \
@@ -67,42 +63,9 @@ firefox \
   --first-startup \
   --foreground \
   --kiosk \
-  --ssb ${BROWSER_URL} \ 
-&
+  --ssb \
+  "${BROWSER_URL}" \
+  &
 sleep 0.5  # Ensure this has started before moving on
 xdotool mousemove 1 1 click 1  # Move mouse out of the way so it doesn't trigger the "pause" overlay on the video tile
-
-# Start ffmpeg to transcode the capture from the X11 framebuffer and the
-# PulseAudio virtual sound device we created earlier and send that to the RTMP
-# endpoint in H.264/AAC format using a FLV container format.
-#
-# NB: These arguments have a very specific order. Seemingly inocuous changes in
-# argument order can have pretty drastic effects, so be careful when
-# adding/removing/reordering arguments here.
-ffmpeg \
-  -hide_banner -loglevel error \
-  -nostdin \
-  -s ${SCREEN_RESOLUTION} \
-  -r ${VIDEO_FRAMERATE} \
-  -draw_mouse 0 \
-  -f x11grab \
-    -i ${DISPLAY} \
-  -f pulse \
-    -ac 2 \
-    -i default \
-  -c:v libx264 \
-    -pix_fmt yuv420p \
-    -profile:v main \
-    -preset veryfast \
-    -x264opts "nal-hrd=cbr:no-scenecut" \
-    -minrate ${VIDEO_BITRATE} \
-    -maxrate ${VIDEO_BITRATE} \
-    -g ${VIDEO_GOP} \
-  -filter_complex "adelay=delays=1000|1000" \
-  -c:a aac \
-    -b:a ${AUDIO_BITRATE} \
-    -ac ${AUDIO_CHANNELS} \
-    -ar ${AUDIO_SAMPLERATE} \
-  -f flv ${RTMP_URL}
-#exec node /recording/record.js ${S3_BUCKET_NAME} ${SCREEN_WIDTH} ${SCREEN_HEIGHT}
 

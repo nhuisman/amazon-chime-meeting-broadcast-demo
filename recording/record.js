@@ -40,7 +40,7 @@ let micStream;
 let socketError = false;
 let transcribeException = false;
 
-var ffmpeg = require('fluent-ffmpeg');
+let ffmpeg = require('fluent-ffmpeg');
 
 var command = ffmpeg()
 .addInput(':2.0+0,150')

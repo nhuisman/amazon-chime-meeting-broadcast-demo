@@ -1,6 +1,6 @@
 const inputSampleRate = 44100;
 
-export function pcmEncode(input) {
+exports.pcmEncode = function(input) {
     var offset = 0;
     var buffer = new ArrayBuffer(input.length * 2);
     var view = new DataView(buffer);
@@ -9,9 +9,9 @@ export function pcmEncode(input) {
         view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
     }
     return buffer;
-}
+};
 
-export function downsampleBuffer(buffer, outputSampleRate = 16000) {
+exports.downsampleBuffer = function(buffer, outputSampleRate = 16000) {
     if (outputSampleRate === inputSampleRate) {
         return buffer;
     }
@@ -34,4 +34,4 @@ export function downsampleBuffer(buffer, outputSampleRate = 16000) {
         offsetBuffer = nextOffsetBuffer;
      }
      return result;
-}
+};

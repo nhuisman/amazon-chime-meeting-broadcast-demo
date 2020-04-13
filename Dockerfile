@@ -16,11 +16,13 @@ RUN apt-get install -y nodejs
 
 RUN /usr/bin/apt-get install -y libasound2-dev pkg-config
 
-# RECORDING JAVASCRIPT
-COPY /recording /recording
-RUN chmod +x /recording/record.js
+# COPY PACKAGE*
+COPY /recording/package*.json /recording/
 WORKDIR /recording
 RUN /usr/bin/npm install
+
+COPY /recording/ /recording
+RUN chmod +x /recording/record.js
 
 # ENTRY SCRIPT
 COPY run.sh /

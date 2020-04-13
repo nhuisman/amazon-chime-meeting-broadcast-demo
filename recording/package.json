@@ -1,0 +1,30 @@
+{
+  "name": "recording",
+  "version": "1.0.0",
+  "description": "",
+  "main": "record.js",
+  "scripts": {
+    "start": "node record.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.632.0",
+    "fluent-ffmpeg": "2.1.2",
+    "@aws-sdk/eventstream-marshaller": "0.1.0-preview.2",
+    "@aws-sdk/util-utf8-node": "0.1.0-preview.1",
+    "browserify": "^16.3.0",
+    "dotenv": "^8.0.0",
+    "express": "^4.17.1",
+    "http-proxy-middleware": "^0.19.1",
+    "local-web-server": "^3.0.6",
+    "microphone-stream": "^5.0.1",
+    "query-string": "^6.8.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.5.0",
+    "@babel/preset-env": "^7.5.2",
+    "babelify": "^10.0.0"
+  }
+}
